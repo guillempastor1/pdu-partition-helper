@@ -28,6 +28,24 @@
       stroke: #ccc;
       stroke-width: 3px;
     }
+
+    .popup {
+    position: absolute;
+    width: 200px;
+    background: #f9f9f9;
+    border: 1px solid #ccc;
+    padding: 10px;
+    box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+    display: none;
+  }
+
+  .popup .close-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    cursor: pointer;
+  }
+
   </style>
 </head>
 <body>
@@ -36,6 +54,13 @@
     <g></g>
   </svg>
 </div>
+
+<div class="popup" id="popup">
+  <span class="close-btn" onclick="closePopup()">x</span>
+  <p id="popup-content"></p>
+</div>
+
+
 <button id="finish-button">Finish</button>
 
 <script src="https://d3js.org/d3.v3.min.js"></script>
@@ -81,6 +106,12 @@
 
   function update(source) {
 
+    var c1 = 0.5;
+    var c2 = 0.00005;
+    function r1(d) {return 3 + Math.max(0, c1 * Math.log(d.area));}
+    function r2(d) { return 3 + c2 * Math.sqrt(d.area)}
+    function r3(d) {return 4.5;}
+
     // Compute the new tree layout.
     var nodes = tree.nodes(root),
         links = tree.links(nodes);
@@ -106,7 +137,8 @@
         .attr("dy", ".35em")
         .attr("text-anchor", function(d) { return d.children || d._children ? "end" : "start"; })
         .text(function(d) { return d.name; })
-        .style("fill-opacity", 1e-6);
+        .style("fill-opacity", 1e-6)
+        .on("click", clickNodeName);
 
     new_nodes.append("text")
         .attr("class", "toggle")
@@ -121,10 +153,11 @@
     var moved_node = node.transition().duration(duration)
         .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
     moved_node.select("circle")
-        .attr("r", 4.5)
+        .attr("r", function(d) {return r3(d);})
         .style("fill", function(d) {
           if (childless(d)) return "#fff";
-          return d._children ? (d.in_cut ? "red": (d.uncut_area ? "lightsteelblue" : "green")) : "#fff"; }
+          return d._children ? (d.in_cut ? "red": (d.uncut_area ? "lightsteelblue" : "green")) : 
+                              (d.uncut_area ? "#fff" : "green"); }
         );
     moved_node.select("text")
         .style("fill-opacity", 1);
@@ -173,6 +206,7 @@
 
   // Toggle children on click.
   function clickExpand(d) {
+    console.log(d);
     if (d.in_cut) return;
 
     if (d.children) {
@@ -190,11 +224,11 @@
   }
 
   function clickCircle(d) {
-    console.log(d)
 
     function collapse(d) {
       // if (!d) return;
       d.in_cut = false;
+      d.uncut_area = d.area;
       if (d.children) {
         d._children = d.children;
         d._children.forEach(collapse);
@@ -221,19 +255,44 @@
       }
     }
 
-    if (childless(d)) return;
+    function updateParentsRemove(d) {
+      area = d.area;
+      
+      while (d != "null") {
+        console.log(d.name, d.uncut_area);
+        d.uncut_area += area;
+        console.log(d.name, d.uncut_area);
+        d = d.parent;
+      }
+    }
 
-    updateParents(d, d.in_cut);
+    function updateParentsAdd(d) {
+      area = d.uncut_area;
+
+      while (d != "null") {
+        console.log(d.name, d.uncut_area);
+        d.uncut_area -= area;
+        console.log(d.name, d.uncut_area);
+        d = d.parent;
+      }
+    }
+
+    if (childless(d)) return;    
 
     if (d.in_cut) {
+      updateParentsRemove(d);
+
       // Select the text element with the class "toggle" within the same group (g) element
       d3.select(this.parentNode).select("text.toggle").text("[+]");
       d.in_cut = false;
       update(d);
       
-    } else { 
-      collapse(d); // sets d.in_cut to false
+    } else {
+      updateParentsAdd(d);
+
+      collapse(d); // sets d.in_cut to false and d.uncut_area = d.area
       d.in_cut = true;
+      d.uncut_area = 0;
       update(d);
       
       // Select the text element with the class "toggle" within the same group (g) element
@@ -247,6 +306,23 @@
     the _children attribute is not initialized to null
     */
     return d._children && d._children.length == 0;
+  }
+
+  // Function to display the popup window with node information
+  function clickNodeName(d) {
+    var popup = document.getElementById("popup");
+    var popupContent = document.getElementById("popup-content");
+
+
+    popupContent.innerHTML = "Name: " + d.full_name + "<br>Area: " + d.area + "<br>Uncut area: " + d.uncut_area;
+    popup.style.display = "block";
+    popup.style.left = (d3.event.pageX + 5) + "px";
+    popup.style.top = (d3.event.pageY + 5) + "px";
+  }
+
+  // Function to close the popup window
+  function closePopup() {
+    document.getElementById("popup").style.display = "none";
   }
 
   document.getElementById("finish-button").addEventListener("click", function() {

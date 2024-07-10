@@ -6,7 +6,6 @@ import json
 #                      ("/A/C/D", 10),
 #                      ("/A/C/E", 10)]
 
-# hierarchical_text = [('./c.svg', 116817), ('./hierarchy_to_tree.py', 5593), ('./.Rhistory', 0), ('./a.svg', 116939), ('./test.py', 317), ('./input_graph_tree.json', 512), ('./.gitattributes', 86), ('./.gitignore', 37), ('./directory_structure.txt', 150), ('./b.svg', 79354), ('./collapsible_tree.html', 4399), ('./hierarchy_to_dict.py', 1441), ('.', 329741)]
 hierarchical_text = []
 file_path = "directory_structure.txt"
 
@@ -20,24 +19,38 @@ with open(file_path, "r") as file:
 
 sep_char = "/"
 
+def fillAreas(node, tree, areas):
+    if len(tree[node]) == 0: return areas[node]
+
+    areas[node] = 0
+    for child in tree[node]:
+        areas[node] += fillAreas(child, tree, areas)
+    
+    return areas[node]
+
+
 def make_tree(h_text):
     h_text = [(s.replace(sep_char, chr(0)), w) for s, w in h_text]
+    print("begin")
     h_text.sort()
+    print("sorting is done")
     h_text = [(s.replace(chr(0), sep_char), w) for s, w in h_text]
-    
+
     root, root_ar = h_text[0]
 
     tree = {root: []}
     areas = {root: root_ar}
     for i in range(1, len(h_text)):
-        dir, dir_ar = h_text[i]
+        dir, dir_area = h_text[i]
 
         parent = dir[:dir.rfind(sep_char)]
         tree[parent].append(dir)
         
         tree[dir] = []
-        areas[dir] = dir_ar
+        areas[dir] = dir_area
 
+    # fill areas properly
+    fillAreas(root, tree, areas)
     return tree, root, areas
 
 def dfs(tree, node, areas, depth, max_depth = 100):
