@@ -31,9 +31,7 @@ def fillAreas(node, tree, areas):
 
 def make_tree(h_text):
     h_text = [(s.replace(sep_char, chr(0)), w) for s, w in h_text]
-    print("begin")
     h_text.sort()
-    print("sorting is done")
     h_text = [(s.replace(chr(0), sep_char), w) for s, w in h_text]
 
     root, root_ar = h_text[0]

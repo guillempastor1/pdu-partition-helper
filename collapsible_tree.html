@@ -104,10 +104,18 @@
 
   d3.select(self.frameElement).style("height", "800px");
 
+  function childless(d) {
+    /*
+    d is childless iff _children = []. This is because
+    the _children attribute is not initialized to null
+    */
+    return d._children && d._children.length == 0;
+  }
+
   function update(source) {
 
-    var c1 = 0.5;
-    var c2 = 0.00005;
+    var c1 = 0.1;
+    var c2 = 0.00003;
     function r1(d) {return 3 + Math.max(0, c1 * Math.log(d.area));}
     function r2(d) { return 3 + c2 * Math.sqrt(d.area)}
     function r3(d) {return 4.5;}
@@ -206,7 +214,6 @@
 
   // Toggle children on click.
   function clickExpand(d) {
-    console.log(d);
     if (d.in_cut) return;
 
     if (d.children) {
@@ -259,9 +266,7 @@
       area = d.area;
       
       while (d != "null") {
-        console.log(d.name, d.uncut_area);
         d.uncut_area += area;
-        console.log(d.name, d.uncut_area);
         d = d.parent;
       }
     }
@@ -270,9 +275,7 @@
       area = d.uncut_area;
 
       while (d != "null") {
-        console.log(d.name, d.uncut_area);
         d.uncut_area -= area;
-        console.log(d.name, d.uncut_area);
         d = d.parent;
       }
     }
@@ -300,14 +303,6 @@
     }
   }
 
-  function childless(d) {
-    /*
-    d is childless iff _children = []. This is because
-    the _children attribute is not initialized to null
-    */
-    return d._children && d._children.length == 0;
-  }
-
   // Function to display the popup window with node information
   function clickNodeName(d) {
     var popup = document.getElementById("popup");
@@ -327,14 +322,15 @@
 
   document.getElementById("finish-button").addEventListener("click", function() {
     var namesInCut = [];
-    collectNamesInCut(root, namesInCut);
+    var sand = [];
+    collectNamesInCut(root, namesInCut, sand);
 
     // Create a Blob with the names
     var blob = new Blob([namesInCut.join('\n')], { type: 'text/plain' });
     
     // Create an object URL for the Blob
     var url = window.URL.createObjectURL(blob);
-
+    
     // Create a temporary link element and trigger the download
     var a = document.createElement("a");
     a.style.display = "none";
@@ -342,18 +338,20 @@
     a.download = "out.txt";
     document.body.appendChild(a);
     a.click();
-
+    
     // Clean up by removing the temporary link element and revoking the object URL
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
-
+    
   });
 
-  function collectNamesInCut(node, names) {
+  function collectNamesInCut(node, names, sand) {
     if (node.in_cut) {
       names.push(node.full_name);
       return; // no descendant will be a cut-node
     }
+
+    if (node.area == node.uncut_area) return;
 
     if (node.children) {
       node.children.forEach(function(child) {
